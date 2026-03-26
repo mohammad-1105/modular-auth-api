@@ -4,12 +4,29 @@ export class ApiError extends Error {
   errors: unknown;
   isOperational: boolean;
 
-  constructor(statusCode: number, message: string, errors: unknown = null) {
+  /**
+   * Additional metadata (optional)
+   * Useful for:
+   * - rate limiting info
+   * - debugging context
+   * - structured logging
+   */
+  meta?: Record<string, unknown>;
+
+  constructor(
+    statusCode: number,
+    message: string,
+    errors: unknown = null,
+    meta?: Record<string, unknown>,
+  ) {
     super(message);
     this.statusCode = statusCode;
     this.success = false;
     this.errors = errors;
     this.isOperational = true;
+    if (meta !== undefined) {
+      this.meta = meta;
+    }
 
     Error.captureStackTrace(this, this.constructor);
   }
@@ -34,6 +51,10 @@ export class ApiError extends Error {
 
   static conflict(message: string = "Conflict") {
     return new ApiError(409, message);
+  }
+
+  static tooManyRequests(message: string = "Too many requests", retryAfter?: number) {
+    return new ApiError(429, message, null, retryAfter ? { retryAfter } : undefined);
   }
 
   static internal(message: string = "Internal Server Error") {

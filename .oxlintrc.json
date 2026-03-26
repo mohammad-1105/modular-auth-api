@@ -18,6 +18,7 @@
   "rules": {
     "no-console": "off",
     "import/no-cycle": "error",
-    "unicorn/prefer-node-protocol": "warn"
+    "unicorn/prefer-node-protocol": "warn",
+    "no-inline-comments": "off"
   }
 }
