@@ -3,7 +3,6 @@ import type { Express } from "express";
 import express from "express";
 
 import { morganMiddleware } from "@/shared/logger/morgan.middleware.js";
-import { globalErrorHandler } from "@/shared/middlewares/error.middleware.js";
 import { requestContextMiddleware } from "@/shared/middlewares/request-context.middleware.js";
 
 import { limiter } from "./rate-limit.config.js";
@@ -46,9 +45,4 @@ export const setupMiddlewares = (app: Express) => {
   // Static files
   // -------------------------------
   app.use(express.static("public"));
-
-  // -------------------------------
-  // Error handler (MUST BE LAST)
-  // -------------------------------
-  app.use(globalErrorHandler);
 };
