@@ -1,22 +1,30 @@
 {
-  "name": "social-media-backend",
+  "name": "modular-social-backend",
   "version": "1.0.0",
-  "description": "",
-  "keywords": [],
+  "description": "A scalable, feature-based social media backend built with Node.js, Express, and MongoDB. Designed for learning clean architecture and easy frontend integration.",
+  "keywords": [
+    "backend",
+    "clean-architecture",
+    "express",
+    "modular-architecture",
+    "mongodb",
+    "nodejs",
+    "rest-api",
+    "social-media"
+  ],
   "license": "ISC",
   "author": "Mohammad Aman",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc && tsc-alias",
     "check": "pnpm run fmt:check && pnpm run lint && pnpm run build",
-    "dev": "pnpm run \"/dev:/\"",
+    "dev": "concurrently \"pnpm dev:tsc\" \"pnpm dev:alias\" \"pnpm dev:node\"",
     "dev:alias": "tsc-alias --watch",
-    "dev:node": "node --enable-source-maps --watch dist/index.js",
+    "dev:node": "cross-env NODE_ENV=development node --enable-source-maps --watch dist/index.js",
     "dev:tsc": "tsc --watch --preserveWatchOutput",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
-    "hooks:install": "husky",
     "hooks:pre-commit": "sh .husky/pre-commit",
     "lint": "oxlint . --tsconfig tsconfig.json",
     "lint:fix": "oxlint . --fix --tsconfig tsconfig.json",
@@ -46,6 +54,8 @@
     "@types/node": "^25.5.0",
     "@types/request-ip": "^0.0.41",
     "@types/validator": "^13.15.10",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
     "husky": "^9.1.7",
     "oxfmt": "^0.42.0",
     "oxlint": "^1.57.0",
@@ -53,7 +63,7 @@
     "typescript": "^6.0.2"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=20"
   },
   "packageManager": "pnpm@10.33.0"
 }
