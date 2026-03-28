@@ -3,6 +3,7 @@ import jwt, { type JwtPayload } from "jsonwebtoken";
 
 import { env } from "@/config/env.js";
 import { userRepository } from "@/modules/auth/user.repository.js";
+import { type UserRolesEnumType } from "@/shared/constants/user.constants.js";
 
 import { ApiError } from "../utils/api-error.js";
 
@@ -91,7 +92,7 @@ export const getLoggedInUserOrIgnore = async (
   return next();
 };
 
-export const verifyPermission = (roles: string[] = []) => {
+export const verifyPermission = (roles: UserRolesEnumType[] = []) => {
   return (req: AuthRequest, _res: Response, next: NextFunction) => {
     if (!req.user?._id) {
       return next(ApiError.unauthorized("Unauthorized request"));
