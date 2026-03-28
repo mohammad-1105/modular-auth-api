@@ -28,11 +28,11 @@ export interface IUser extends Document {
 
   refreshToken?: string;
 
-  forgotPasswordToken?: string;
-  forgotPasswordTokenExpiry?: Date;
+  forgotPasswordToken?: string | null;
+  forgotPasswordTokenExpiry?: Date | null;
 
-  emailVerificationToken?: string;
-  emailVerificationTokenExpiry?: Date;
+  emailVerificationToken?: string | null;
+  emailVerificationTokenExpiry?: Date | null;
 
   createdAt?: Date;
   updatedAt?: Date;

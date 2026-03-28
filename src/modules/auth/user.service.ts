@@ -1,3 +1,7 @@
+import crypto from "node:crypto";
+
+import { compare } from "bcryptjs";
+
 import { UserLoginEnum, UserRolesEnum } from "@/shared/constants/user.constants.js";
 import { ApiError } from "@/shared/utils/api-error.js";
 import {
@@ -7,7 +11,7 @@ import {
 } from "@/shared/utils/generate-tokens.js";
 import { emailVerificationMailgenContent, sendEmail } from "@/shared/utils/mail.js";
 
-import type { RegisterDTO } from "./dto/auth.dto.js";
+import type { LoginDTO, RegisterDTO } from "./dto/auth.dto.js";
 import { userRepository } from "./user.repository.js";
 
 type RegisterRequestMeta = {
@@ -16,6 +20,10 @@ type RegisterRequestMeta = {
 };
 
 class UserService {
+  private buildInvalidCredentialsError() {
+    return ApiError.unauthorized("Invalid email or password");
+  }
+
   private async generateAccessAndRefreshTokens(userId: string) {
     const user = await userRepository.findById(userId);
 
@@ -37,7 +45,7 @@ class UserService {
   }
 
   private buildEmailVerificationUrl(requestMeta: RegisterRequestMeta, token: string) {
-    return `${requestMeta.protocol}://${requestMeta.host}/api/v1/users/verify-email?token=${encodeURIComponent(token)}`;
+    return `${requestMeta.protocol}://${requestMeta.host}/api/v1/users/verify-email/${encodeURIComponent(token)}`;
   }
 
   private async assignEmailVerificationToken(
@@ -52,11 +60,16 @@ class UserService {
 
     const verificationUrl = this.buildEmailVerificationUrl(requestMeta, unHashedToken);
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       email: user.email,
       subject: "Please verify your email",
       content: emailVerificationMailgenContent(user.username, verificationUrl),
     });
+
+    if (!emailResult.ok) {
+      await user.deleteOne();
+      throw ApiError.internal("Failed to send verification email. Please try registering again");
+    }
   }
 
   async register(data: RegisterDTO, requestMeta: RegisterRequestMeta) {
@@ -75,10 +88,6 @@ class UserService {
 
     await this.assignEmailVerificationToken(user, requestMeta);
 
-    const { accessToken, refreshToken } = await this.generateAccessAndRefreshTokens(
-      user._id.toString(),
-    );
-
     const createdUser = await userRepository.findByIdSafe(user._id.toString());
 
     if (!createdUser) {
@@ -87,8 +96,68 @@ class UserService {
 
     return {
       user: createdUser,
+    };
+  }
+
+  async login(data: LoginDTO) {
+    const user = await userRepository.findByEmailOrUsername(data.email);
+
+    if (!user) {
+      throw this.buildInvalidCredentialsError();
+    }
+
+    if (user.loginType !== UserLoginEnum.EMAIL_PASSWORD) {
+      throw ApiError.badRequest(
+        `You have previously registered using ${user.loginType.toLowerCase()}. Please use the ${user.loginType.toLowerCase()} login option.`,
+      );
+    }
+
+    const isPasswordValid = await compare(data.password, user.password);
+    if (!isPasswordValid) {
+      throw this.buildInvalidCredentialsError();
+    }
+
+    if (!user.isEmailVerified) {
+      throw ApiError.forbidden("Please verify your email before logging in");
+    }
+
+    const { accessToken, refreshToken } = await this.generateAccessAndRefreshTokens(
+      user._id.toString(),
+    );
+
+    const loggedInUser = await userRepository.findByIdSafe(user._id.toString());
+
+    if (!loggedInUser) {
+      throw ApiError.internal("Something went wrong while logging in the user");
+    }
+
+    return {
+      loggedInUser,
       accessToken,
       refreshToken,
+    };
+  }
+
+  async logout(userId: string) {
+    await userRepository.updateRefreshToken(userId, "");
+  }
+
+  async verifyEmail(emailVerificationToken: string) {
+    const hashedToken = crypto.createHash("sha256").update(emailVerificationToken).digest("hex");
+
+    const user = await userRepository.findByEmailVerificationToken(hashedToken);
+
+    if (!user) {
+      throw ApiError.badRequest("Token is Invalid or Expired");
+    }
+
+    user.emailVerificationToken = null;
+    user.emailVerificationTokenExpiry = null;
+    user.isEmailVerified = true;
+    await user.save({ validateBeforeSave: false });
+
+    return {
+      isEmailVerified: true,
     };
   }
 }

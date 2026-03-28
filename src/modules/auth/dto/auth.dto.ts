@@ -34,6 +34,10 @@ const loginSchema = z.object({
   password: passwordSchema,
 });
 
+const verifyEmailParamsSchema = z.object({
+  verificationToken: z.string().min(1, { error: "Verification token is required" }),
+});
+
 // change password schema
 const changePasswordSchema = z
   .object({
@@ -64,6 +68,7 @@ type ResetPasswordDTO = z.infer<typeof resetPasswordSchema>;
 export {
   registerSchema,
   loginSchema,
+  verifyEmailParamsSchema,
   changePasswordSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
