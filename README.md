@@ -162,6 +162,7 @@ Create a `.env` file in the project root.
 | `PORT`                         | Yes      | Port for the API server                               |
 | `DATABASE_URL`                 | Yes      | MongoDB connection string                             |
 | `CORS_ORIGIN`                  | Yes      | Allowed frontend origin(s), or `*`                    |
+| `API_PUBLIC_URL`               | Yes      | Public backend base URL used in verification emails   |
 | `ACCESS_TOKEN_SECRET`          | Yes      | Secret used to sign access tokens                     |
 | `ACCESS_TOKEN_EXPIRY`          | Yes      | Access token lifetime, for example `15m`              |
 | `REFRESH_TOKEN_SECRET`         | Yes      | Secret used to sign refresh tokens                    |
@@ -179,6 +180,7 @@ NODE_ENV="development"
 PORT="3000"
 DATABASE_URL="mongodb://127.0.0.1:27017/modular-auth-api"
 CORS_ORIGIN="http://localhost:5173"
+API_PUBLIC_URL="http://localhost:3000"
 ACCESS_TOKEN_SECRET="replace-this"
 ACCESS_TOKEN_EXPIRY="15m"
 REFRESH_TOKEN_SECRET="replace-this-too"
@@ -278,6 +280,7 @@ Notes:
 - Username and email must be unique
 - Email verification is required before login
 - Password is hashed before storage
+- Verification emails use `API_PUBLIC_URL` as the trusted backend base URL
 
 ### `GET /api/v1/users/verify-email/:verificationToken`
 
@@ -375,6 +378,7 @@ Request body:
 
 Notes:
 
+- Always returns the same success message, even if the email does not exist
 - Sends an email with a reset URL if `FORGOT_PASSWORD_REDIRECT_URL` is configured
 - Otherwise the email contains the raw reset token for manual use
 
@@ -396,6 +400,11 @@ Request body:
 }
 ```
 
+Notes:
+
+- Clears the stored refresh session for the account
+- Clears auth cookies in browser-based flows
+
 ### `POST /api/v1/users/change-password`
 
 Requires authentication. Changes the current user's password after verifying the old password.
@@ -408,6 +417,11 @@ Request body:
   "newPassword": "NewStrongPass123"
 }
 ```
+
+Notes:
+
+- Clears the stored refresh session for the account
+- Clears auth cookies in browser-based flows
 
 ### `PATCH /api/v1/users/assign-role/:userId`
 

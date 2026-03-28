@@ -8,13 +8,11 @@ import {
 
 import { type IUser } from "./user.model.js";
 
-export type UserRequestMeta = {
-  protocol: string;
-  host: string;
-};
-
-const buildEmailVerificationUrl = (requestMeta: UserRequestMeta, token: string) => {
-  return `${requestMeta.protocol}://${requestMeta.host}/api/v1/users/verify-email/${encodeURIComponent(token)}`;
+const buildEmailVerificationUrl = (token: string) => {
+  return new URL(
+    `/api/v1/users/verify-email/${encodeURIComponent(token)}`,
+    env.API_PUBLIC_URL,
+  ).toString();
 };
 
 const buildForgotPasswordUrl = (resetToken: string) => {
@@ -27,12 +25,8 @@ const buildForgotPasswordUrl = (resetToken: string) => {
   return `${normalizedBaseUrl}/${encodeURIComponent(resetToken)}`;
 };
 
-export const sendEmailVerification = async (
-  user: IUser,
-  requestMeta: UserRequestMeta,
-  verificationToken: string,
-) => {
-  const verificationUrl = buildEmailVerificationUrl(requestMeta, verificationToken);
+export const sendEmailVerification = async (user: IUser, verificationToken: string) => {
+  const verificationUrl = buildEmailVerificationUrl(verificationToken);
   const emailResult = await sendEmail({
     email: user.email,
     subject: "Please verify your email",

@@ -19,11 +19,7 @@ import type {
   RegisterDTO,
   ResetPasswordDTO,
 } from "./dto/auth.dto.js";
-import {
-  sendEmailVerification,
-  sendForgotPasswordEmail,
-  type UserRequestMeta,
-} from "./user.mailer.js";
+import { sendEmailVerification, sendForgotPasswordEmail } from "./user.mailer.js";
 import { type IUser } from "./user.model.js";
 import { userRepository } from "./user.repository.js";
 
@@ -62,7 +58,6 @@ class UserService {
 
   private async assignEmailVerificationToken(
     user: IUser,
-    requestMeta: UserRequestMeta,
     options?: {
       deleteUserOnFailure?: boolean;
     },
@@ -74,7 +69,7 @@ class UserService {
     await user.save({ validateBeforeSave: false });
 
     try {
-      await sendEmailVerification(user, requestMeta, unHashedToken);
+      await sendEmailVerification(user, unHashedToken);
     } catch (error) {
       if (options?.deleteUserOnFailure) {
         await user.deleteOne();
@@ -84,7 +79,7 @@ class UserService {
     }
   }
 
-  async register(data: RegisterDTO, requestMeta: UserRequestMeta) {
+  async register(data: RegisterDTO) {
     const existing = await userRepository.findByEmailOrUsername(data.email, data.username);
 
     if (existing) throw ApiError.conflict("User with email or username already exists");
@@ -98,7 +93,7 @@ class UserService {
       isEmailVerified: false,
     });
 
-    await this.assignEmailVerificationToken(user, requestMeta, {
+    await this.assignEmailVerificationToken(user, {
       deleteUserOnFailure: true,
     });
 
@@ -175,7 +170,7 @@ class UserService {
     };
   }
 
-  async resendEmailVerification(userId: string, requestMeta: UserRequestMeta) {
+  async resendEmailVerification(userId: string) {
     const user = await userRepository.findById(userId);
 
     if (!user) {
@@ -186,7 +181,7 @@ class UserService {
       throw ApiError.conflict("Email is already verified");
     }
 
-    await this.assignEmailVerificationToken(user, requestMeta);
+    await this.assignEmailVerificationToken(user);
   }
 
   async refreshAccessToken(incomingRefreshToken?: string) {
@@ -212,7 +207,7 @@ class UserService {
     const user = await userRepository.findByEmail(data.email);
 
     if (!user) {
-      throw ApiError.notFound("User does not exist");
+      return;
     }
 
     const { unHashedToken, hashedToken, tokenExpiry } = generateTemporaryToken();
@@ -244,6 +239,8 @@ class UserService {
     user.forgotPasswordTokenExpiry = null;
     user.password = data.newPassword;
     await user.save({ validateBeforeSave: false });
+
+    await userRepository.updateRefreshToken(user._id.toString(), "");
   }
 
   async changePassword(userId: string, data: ChangePasswordDTO) {
@@ -261,6 +258,8 @@ class UserService {
 
     user.password = data.newPassword;
     await user.save({ validateBeforeSave: false });
+
+    await userRepository.updateRefreshToken(userId, "");
   }
 
   async assignRole(userId: string, data: AssignRoleDTO) {

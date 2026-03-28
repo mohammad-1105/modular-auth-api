@@ -44,10 +44,7 @@ const extractRefreshToken = (req: Request<unknown, unknown, RefreshAccessTokenBo
 
 class UserController {
   async register(req: Request<unknown, unknown, RegisterDTO>, res: Response) {
-    const { user } = await userService.register(req.body, {
-      protocol: req.protocol,
-      host: req.get("host") ?? "",
-    });
+    const { user } = await userService.register(req.body);
 
     return ApiResponse.created(
       res,
@@ -91,10 +88,7 @@ class UserController {
   }
 
   async resendEmailVerification(req: AuthRequest, res: Response) {
-    await userService.resendEmailVerification(req.user!._id.toString(), {
-      protocol: req.protocol,
-      host: req.get("host") ?? "",
-    });
+    await userService.resendEmailVerification(req.user!._id.toString());
 
     return ApiResponse.success(
       res,
@@ -126,7 +120,11 @@ class UserController {
   async forgotPassword(req: Request<unknown, unknown, ForgotPasswordDTO>, res: Response) {
     await userService.forgotPassword(req.body);
 
-    return ApiResponse.success(res, {}, "Password reset email sent successfully");
+    return ApiResponse.success(
+      res,
+      {},
+      "If the email exists, a password reset email has been sent",
+    );
   }
 
   async resetForgottenPassword(
@@ -135,7 +133,9 @@ class UserController {
   ) {
     await userService.resetForgottenPassword(req.params["resetToken"], req.body);
 
-    return ApiResponse.success(res, {}, "Password reset successfully");
+    res.clearCookie("accessToken", COOKIE_OPTIONS).clearCookie("refreshToken", COOKIE_OPTIONS);
+
+    return ApiResponse.success(res, {}, "Password reset successfully. Please log in again");
   }
 
   async changePassword(
@@ -144,7 +144,9 @@ class UserController {
   ) {
     await userService.changePassword(req.user!._id.toString(), req.body);
 
-    return ApiResponse.success(res, {}, "Password changed successfully");
+    res.clearCookie("accessToken", COOKIE_OPTIONS).clearCookie("refreshToken", COOKIE_OPTIONS);
+
+    return ApiResponse.success(res, {}, "Password changed successfully. Please log in again");
   }
 
   getCurrentUser(req: AuthRequest, res: Response) {
