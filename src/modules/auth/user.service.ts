@@ -1,10 +1,19 @@
-// oxlint-disable no-warning-comments
 import { UserLoginEnum, UserRolesEnum } from "@/shared/constants/user.constants.js";
 import { ApiError } from "@/shared/utils/api-error.js";
-import { generateAccessToken, generateRefreshToken } from "@/shared/utils/generate-tokens.js";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  generateTemporaryToken,
+} from "@/shared/utils/generate-tokens.js";
+import { emailVerificationMailgenContent, sendEmail } from "@/shared/utils/mail.js";
 
 import type { RegisterDTO } from "./dto/auth.dto.js";
 import { userRepository } from "./user.repository.js";
+
+type RegisterRequestMeta = {
+  protocol: string;
+  host: string;
+};
 
 class UserService {
   private async generateAccessAndRefreshTokens(userId: string) {
@@ -27,7 +36,30 @@ class UserService {
     return { accessToken, refreshToken };
   }
 
-  async register(data: RegisterDTO) {
+  private buildEmailVerificationUrl(requestMeta: RegisterRequestMeta, token: string) {
+    return `${requestMeta.protocol}://${requestMeta.host}/api/v1/users/verify-email?token=${encodeURIComponent(token)}`;
+  }
+
+  private async assignEmailVerificationToken(
+    user: Awaited<ReturnType<typeof userRepository.create>>,
+    requestMeta: RegisterRequestMeta,
+  ) {
+    const { unHashedToken, hashedToken, tokenExpiry } = generateTemporaryToken();
+
+    user.emailVerificationToken = hashedToken;
+    user.emailVerificationTokenExpiry = new Date(tokenExpiry);
+    await user.save({ validateBeforeSave: false });
+
+    const verificationUrl = this.buildEmailVerificationUrl(requestMeta, unHashedToken);
+
+    await sendEmail({
+      email: user.email,
+      subject: "Please verify your email",
+      content: emailVerificationMailgenContent(user.username, verificationUrl),
+    });
+  }
+
+  async register(data: RegisterDTO, requestMeta: RegisterRequestMeta) {
     const existing = await userRepository.findByEmailOrUsername(data.email, data.username);
 
     if (existing) throw ApiError.conflict("User with email or username already exists");
@@ -41,7 +73,7 @@ class UserService {
       isEmailVerified: false,
     });
 
-    //  TODO: generate Temporary token and send email
+    await this.assignEmailVerificationToken(user, requestMeta);
 
     const { accessToken, refreshToken } = await this.generateAccessAndRefreshTokens(
       user._id.toString(),
