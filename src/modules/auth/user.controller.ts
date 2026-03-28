@@ -8,7 +8,10 @@ import { userService } from "./user.service.js";
 
 class UserController {
   async register(req: Request<unknown, unknown, RegisterDTO>, res: Response) {
-    const { user, accessToken, refreshToken } = await userService.register(req.body);
+    const { user, accessToken, refreshToken } = await userService.register(req.body, {
+      protocol: req.protocol,
+      host: req.get("host") ?? "",
+    });
 
     // set access and refresh token to the cookie
     res.cookie("accessToken", accessToken, COOKIE_OPTIONS);
@@ -17,7 +20,7 @@ class UserController {
     return ApiResponse.created(
       res,
       { user, accessToken, refreshToken }, // send access and refresh token in response if client decides to save them by themselves
-      "User created successfully",
+      "User created successfully. Email verification has sent to your email",
     );
   }
 }
